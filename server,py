@@ -1,0 +1,35 @@
+from flask import Flask, request
+import firebase_admin
+from firebase_admin import credentials, db
+
+app = Flask(__name__)
+
+cred = credentials.Certificate("serviceAccountKey.json")
+
+firebase_admin.initialize_app(cred, {
+    'databaseURL': 'https://focuslock-61fc0-default-rtdb.asia-southeast1.firebasedatabase.app/'
+})
+
+@app.route("/approve")
+def approve():
+
+    request_id = request.args.get("id")
+
+    db.reference(f"unlock_requests/{request_id}").update({
+        "status": "approved"
+    })
+
+    return "DA CHO PHEP MO KHOA"
+
+@app.route("/deny")
+def deny():
+
+    request_id = request.args.get("id")
+
+    db.reference(f"unlock_requests/{request_id}").update({
+        "status": "denied"
+    })
+
+    return "DA TU CHOI"
+
+app.run(host="0.0.0.0", port=5000)

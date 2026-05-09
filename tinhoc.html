@@ -1,0 +1,453 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Giới hạn thời gian sử dụng</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: system-ui, -apple-system, sans-serif;
+    background: #f5f5f0;
+    min-height: 100vh;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+  }
+  .app { width: 100%; max-width: 480px; }
+  h1 { font-size: 22px; font-weight: 700; color: #1a1a1a; margin-bottom: 4px; }
+  .subtitle { font-size: 13px; color: #888; margin-bottom: 24px; }
+
+  .card {
+    background: #fff;
+    border: 1px solid #e8e8e4;
+    border-radius: 16px;
+    padding: 24px;
+    margin-bottom: 16px;
+  }
+  .section-title {
+    font-size: 11px;
+    color: #aaa;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    margin-bottom: 12px;
+  }
+
+  /* Preset buttons */
+  .preset-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .preset {
+    font-size: 12px;
+    border: 1px solid #ddd;
+    border-radius: 20px;
+    padding: 5px 13px;
+    cursor: pointer;
+    background: transparent;
+    color: #666;
+    transition: all .15s;
+  }
+  .preset:hover { background: #e8f1fb; color: #0c447c; border-color: #185fa5; }
+  .preset.active { background: #185fa5; color: #fff; border-color: #185fa5; }
+  .preset:disabled { opacity: .35; cursor: not-allowed; }
+
+  /* Time inputs */
+  .time-grid-wrap {
+    display: grid;
+    grid-template-columns: 1fr auto 1fr auto 1fr;
+    gap: 4px;
+    align-items: end;
+    margin-bottom: 20px;
+  }
+  .time-col { display: flex; flex-direction: column; align-items: center; gap: 8px; }
+  .time-col label { font-size: 12px; color: #999; }
+  .time-col input[type=number] {
+    width: 100%;
+    text-align: center;
+    font-size: 28px;
+    font-weight: 700;
+    color: #1a1a1a;
+    border: 1.5px solid #e0e0e0;
+    border-radius: 12px;
+    padding: 12px 8px;
+    outline: none;
+    background: #fafaf8;
+    transition: border-color .15s;
+    -moz-appearance: textfield;
+  }
+  .time-col input[type=number]::-webkit-inner-spin-button,
+  .time-col input[type=number]::-webkit-outer-spin-button { -webkit-appearance: none; }
+  .time-col input[type=number]:focus { border-color: #185fa5; background: #fff; }
+  .time-col input[type=number]:disabled { opacity: .4; cursor: not-allowed; }
+  .time-sep {
+    font-size: 28px; font-weight: 700; color: #ccc;
+    align-self: center; margin-top: 20px; padding: 0 2px;
+  }
+
+  /* Stat row */
+  .stat-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+    margin-bottom: 16px;
+  }
+  .stat { background: #f7f7f3; border-radius: 10px; padding: 14px; text-align: center; }
+  .stat-num { font-size: 18px; font-weight: 700; color: #1a1a1a; font-variant-numeric: tabular-nums; }
+  .stat-lbl { font-size: 11px; color: #aaa; margin-top: 3px; }
+
+  /* Progress */
+  .progress-bg { height: 8px; background: #eee; border-radius: 4px; overflow: hidden; margin-bottom: 16px; }
+  .progress-fill { height: 100%; border-radius: 4px; transition: width 1s linear, background .5s; background: #185fa5; }
+
+  /* Warnings */
+  .warn-bar { border-radius: 10px; padding: 10px 14px; font-size: 13px; margin-bottom: 12px; display: none; }
+  .warn-yellow { background: #faeeda; color: #633806; border: 1px solid #ef9f27; }
+  .warn-red    { background: #fcebeb; color: #791f1f; border: 1px solid #e24b4a; }
+
+  /* Buttons */
+  .btn-start {
+    width: 100%; padding: 13px;
+    font-size: 15px; font-weight: 600;
+    border-radius: 10px; border: none;
+    cursor: pointer; background: #185fa5; color: #fff;
+    transition: opacity .15s;
+  }
+  .btn-start:hover { opacity: .88; }
+  .btn-start:disabled { opacity: .4; cursor: not-allowed; }
+  .btn-secondary {
+    width: 100%; padding: 9px; font-size: 13px;
+    border-radius: 10px; border: 1px solid #ddd;
+    cursor: pointer; background: transparent; color: #888;
+    margin-top: 8px; display: none; transition: background .15s;
+  }
+  .btn-secondary:hover { background: #f5f5f0; }
+
+  /* Lock screen */
+  .lock-overlay {
+    display: none;
+    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+    background: rgba(8, 8, 8, 0.93);
+    z-index: 9999;
+    align-items: center; justify-content: center;
+  }
+  .lock-box {
+    background: #fff;
+    border-radius: 24px;
+    padding: 44px 36px;
+    text-align: center;
+    max-width: 380px;
+    width: 90%;
+  }
+  .lock-icon {
+    width: 68px; height: 68px; border-radius: 50%;
+    background: #fcebeb;
+    margin: 0 auto 20px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .lock-icon svg {
+    width: 30px; height: 30px;
+    stroke: #a32d2d; fill: none;
+    stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round;
+  }
+  .lock-title { font-size: 22px; font-weight: 700; color: #1a1a1a; margin-bottom: 10px; }
+  .lock-sub   { font-size: 14px; color: #888; margin-bottom: 28px; line-height: 1.6; }
+  .cooldown-big {
+    font-size: 52px; font-weight: 800; color: #1a1a1a;
+    font-variant-numeric: tabular-nums; letter-spacing: 4px; margin-bottom: 6px;
+  }
+  .cooldown-lbl { font-size: 13px; color: #bbb; margin-bottom: 28px; }
+  .btn-unlock {
+    width: 100%; padding: 10px; font-size: 13px;
+    border-radius: 10px; border: 1px solid #e0e0e0;
+    cursor: pointer; background: transparent; color: #aaa;
+    transition: all .15s;
+  }
+  .btn-unlock:hover { background: #f5f5f0; color: #666; }
+
+  /* Toast notification */
+  .toast {
+    position: fixed; bottom: 24px; right: 24px;
+    background: #1a1a1a; color: #fff;
+    border-radius: 12px; padding: 14px 20px;
+    font-size: 14px; max-width: 280px;
+    transform: translateY(60px); opacity: 0;
+    transition: all .3s ease;
+    pointer-events: none; z-index: 9998; line-height: 1.5;
+  }
+  .toast.show { transform: translateY(0); opacity: 1; }
+  .toast strong { display: block; font-weight: 600; margin-bottom: 2px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <h1>Giới hạn thời gian</h1>
+  <p class="subtitle">Đặt thời gian, app sẽ nhắc nhở và khoá màn hình khi hết giờ.</p>
+
+  <!-- Cài đặt -->
+  <div class="card">
+    <p class="section-title">Chọn nhanh</p>
+    <div class="preset-row">
+      <button class="preset" onclick="setPreset(0,0,30,this)">30 giây</button>
+      <button class="preset" onclick="setPreset(0,1,0,this)">1 phút</button>
+      <button class="preset" onclick="setPreset(0,5,0,this)">5 phút</button>
+      <button class="preset" onclick="setPreset(0,15,0,this)">15 phút</button>
+      <button class="preset" onclick="setPreset(0,30,0,this)">30 phút</button>
+      <button class="preset active" onclick="setPreset(1,0,0,this)">1 giờ</button>
+      <button class="preset" onclick="setPreset(2,0,0,this)">2 giờ</button>
+      <button class="preset" onclick="setPreset(3,0,0,this)">3 giờ</button>
+    </div>
+
+    <p class="section-title">Tuỳ chỉnh thủ công</p>
+    <div class="time-grid-wrap">
+      <div class="time-col">
+        <label>Giờ</label>
+        <input type="number" id="inp-h" min="0" max="23" value="1" oninput="onManualInput()">
+      </div>
+      <div class="time-sep">:</div>
+      <div class="time-col">
+        <label>Phút</label>
+        <input type="number" id="inp-m" min="0" max="59" value="0" oninput="onManualInput()">
+      </div>
+      <div class="time-sep">:</div>
+      <div class="time-col">
+        <label>Giây</label>
+        <input type="number" id="inp-s" min="0" max="59" value="0" oninput="onManualInput()">
+      </div>
+    </div>
+
+    <button class="btn-start" id="btn-start" onclick="startTimer()">Bắt đầu đếm giờ</button>
+    <button class="btn-secondary" id="btn-reset" onclick="resetTimer()">Đặt lại</button>
+  </div>
+
+  <!-- Trạng thái -->
+  <div class="card">
+    <p class="section-title">Trạng thái</p>
+    <div class="stat-grid">
+      <div class="stat">
+        <div class="stat-num" id="s-total">01:00:00</div>
+        <div class="stat-lbl">Tổng thời gian</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="s-left">01:00:00</div>
+        <div class="stat-lbl">Còn lại</div>
+      </div>
+      <div class="stat">
+        <div class="stat-num" id="s-pct">100%</div>
+        <div class="stat-lbl">Phần trăm còn</div>
+      </div>
+    </div>
+    <div class="progress-bg"><div class="progress-fill" id="prog"></div></div>
+    <div class="warn-bar warn-yellow" id="warn-y">⚠ Còn dưới 1 phút — hãy lưu công việc lại!</div>
+    <div class="warn-bar warn-red"    id="warn-r">🔴 Còn dưới 10 giây — máy sắp khoá!</div>
+  </div>
+</div>
+
+<!-- Màn hình khoá -->
+<div class="lock-overlay" id="lock-screen">
+  <div class="lock-box">
+    <div class="lock-icon">
+      <svg viewBox="0 0 24 24">
+        <rect x="3" y="11" width="18" height="11" rx="2"/>
+        <path d="M7 11V7a5 5 0 0 1 10 0v4"/>
+      </svg>
+    </div>
+    <div class="lock-title">Đã hết giờ sử dụng</div>
+    <div class="lock-sub">Bạn đã dùng máy tính đủ thời gian đã đặt.<br>Hãy đứng dậy nghỉ ngơi một chút nhé!</div>
+    <div class="cooldown-big" id="lock-cooldown">05:00</div>
+    <div class="cooldown-lbl">Tự động mở khoá sau khi nghỉ đủ</div>
+    <button class="btn-unlock" onclick="forceUnlock()">Mở khoá ngay (bỏ qua nghỉ ngơi)</button>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast">
+  <strong id="toast-title"></strong>
+  <span id="toast-msg"></span>
+</div>
+
+<script>
+  // ── State ──────────────────────────────────────────────────────
+  let totalSec = 3600, remSec = 3600;
+  let mainTimer = null, cooldownTimer = null;
+  let running = false;
+  let warned60 = false, warned10 = false;
+  let toastTimeout = null;
+
+  // ── Helpers ────────────────────────────────────────────────────
+  function pad(n) { return String(Math.floor(n)).padStart(2, '0'); }
+
+  function fmtHMS(s) {
+    const h   = Math.floor(s / 3600);
+    const m   = Math.floor((s % 3600) / 60);
+    const sec = s % 60;
+    return pad(h) + ':' + pad(m) + ':' + pad(sec);
+  }
+
+  function fmtMS(s) {
+    return pad(s / 60) + ':' + pad(s % 60);
+  }
+
+  function toast(title, msg, duration = 4000) {
+    clearTimeout(toastTimeout);
+    document.getElementById('toast-title').textContent = title;
+    document.getElementById('toast-msg').textContent   = msg;
+    const el = document.getElementById('toast');
+    el.classList.add('show');
+    toastTimeout = setTimeout(() => el.classList.remove('show'), duration);
+  }
+
+  function clampInput(id, min, max) {
+    const el = document.getElementById(id);
+    let v = parseInt(el.value) || 0;
+    if (v < min) v = min;
+    if (v > max) v = max;
+    el.value = v;
+    return v;
+  }
+
+  // ── Preset & manual input ──────────────────────────────────────
+  function setPreset(h, m, s, btn) {
+    document.querySelectorAll('.preset').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    document.getElementById('inp-h').value = h;
+    document.getElementById('inp-m').value = m;
+    document.getElementById('inp-s').value = s;
+    syncFromInputs();
+  }
+
+  function onManualInput() {
+    document.querySelectorAll('.preset').forEach(b => b.classList.remove('active'));
+    syncFromInputs();
+  }
+
+  function syncFromInputs() {
+    const h = clampInput('inp-h', 0, 23);
+    const m = clampInput('inp-m', 0, 59);
+    const s = clampInput('inp-s', 0, 59);
+    if (!running) {
+      totalSec = h * 3600 + m * 60 + s;
+      remSec   = totalSec;
+      document.getElementById('s-total').textContent = fmtHMS(totalSec);
+      document.getElementById('s-left').textContent  = fmtHMS(remSec);
+      document.getElementById('s-pct').textContent   = '100%';
+      document.getElementById('prog').style.width    = '100%';
+    }
+  }
+
+  // ── Timer ──────────────────────────────────────────────────────
+  function startTimer() {
+    if (running) return;
+
+    const h = clampInput('inp-h', 0, 23);
+    const m = clampInput('inp-m', 0, 59);
+    const s = clampInput('inp-s', 0, 59);
+    totalSec = h * 3600 + m * 60 + s;
+
+    if (totalSec < 1) {
+      alert('Vui lòng đặt ít nhất 1 giây!');
+      return;
+    }
+
+    remSec   = totalSec;
+    running  = true;
+    warned60 = false;
+    warned10 = false;
+
+    document.getElementById('btn-start').disabled      = true;
+    document.getElementById('btn-reset').style.display = 'block';
+    ['inp-h','inp-m','inp-s'].forEach(id => document.getElementById(id).disabled = true);
+    document.querySelectorAll('.preset').forEach(b => b.disabled = true);
+
+    document.getElementById('s-total').textContent = fmtHMS(totalSec);
+    toast('Bắt đầu!', 'Đang đếm ' + fmtHMS(totalSec) + ' — chúc bạn tập trung!');
+
+    tick();
+    mainTimer = setInterval(tick, 1000);
+  }
+
+  function tick() {
+    if (remSec <= 0) {
+      clearInterval(mainTimer);
+      showLock();
+      return;
+    }
+
+    const pct = Math.round(remSec / totalSec * 100);
+    const col = remSec <= 10 ? '#e24b4a' : remSec <= 60 ? '#ba7517' : '#185fa5';
+
+    document.getElementById('s-left').textContent    = fmtHMS(remSec);
+    document.getElementById('s-pct').textContent     = pct + '%';
+    document.getElementById('prog').style.width      = pct + '%';
+    document.getElementById('prog').style.background = col;
+
+    const wy = document.getElementById('warn-y');
+    const wr = document.getElementById('warn-r');
+
+    if (remSec <= 10) {
+      wy.style.display = 'none';
+      wr.style.display = 'block';
+      if (!warned10) { warned10 = true; toast('Cảnh báo!', 'Còn 10 giây — máy sắp khoá!'); }
+    } else if (remSec <= 60) {
+      wy.style.display = 'block';
+      wr.style.display = 'none';
+      if (!warned60) { warned60 = true; toast('Sắp hết giờ', 'Còn dưới 1 phút — hãy lưu công việc!'); }
+    } else {
+      wy.style.display = 'none';
+      wr.style.display = 'none';
+    }
+
+    remSec--;
+  }
+
+  // ── Lock screen ────────────────────────────────────────────────
+  function showLock() {
+    document.getElementById('lock-screen').style.display = 'flex';
+    let cd = 300;
+    document.getElementById('lock-cooldown').textContent = fmtMS(cd);
+    cooldownTimer = setInterval(() => {
+      cd--;
+      document.getElementById('lock-cooldown').textContent = fmtMS(cd);
+      if (cd <= 0) { clearInterval(cooldownTimer); autoUnlock(); }
+    }, 1000);
+  }
+
+  function autoUnlock() {
+    document.getElementById('lock-screen').style.display = 'none';
+    resetTimer();
+    toast('Nghỉ đủ rồi!', 'Bạn có thể bắt đầu phiên mới.');
+  }
+
+  function forceUnlock() {
+    clearInterval(cooldownTimer);
+    document.getElementById('lock-screen').style.display = 'none';
+    resetTimer();
+  }
+
+  // ── Reset ──────────────────────────────────────────────────────
+  function resetTimer() {
+    clearInterval(mainTimer);
+    running  = false;
+    warned60 = false;
+    warned10 = false;
+
+    document.getElementById('btn-start').disabled      = false;
+    document.getElementById('btn-reset').style.display = 'none';
+    ['inp-h','inp-m','inp-s'].forEach(id => document.getElementById(id).disabled = false);
+    document.querySelectorAll('.preset').forEach(b => b.disabled = false);
+
+    document.getElementById('warn-y').style.display  = 'none';
+    document.getElementById('warn-r').style.display  = 'none';
+    document.getElementById('prog').style.width      = '100%';
+    document.getElementById('prog').style.background = '#185fa5';
+
+    remSec = totalSec;
+    document.getElementById('s-left').textContent = fmtHMS(totalSec);
+    document.getElementById('s-pct').textContent  = '100%';
+  }
+
+  // ── Init ───────────────────────────────────────────────────────
+  syncFromInputs();
+</script>
+</body>
+</html>
