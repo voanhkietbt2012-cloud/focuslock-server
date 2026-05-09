@@ -7,9 +7,10 @@ app = Flask(__name__)
 
 cred = credentials.Certificate("serviceAccountKey.json")
 
-firebase_admin.initialize_app(cred, {
-    'databaseURL': 'https://focuslock-61fc0-default-rtdb.asia-southeast1.firebasedatabase.app/'
-})
+if not firebase_admin._apps:
+    firebase_admin.initialize_app(cred, {
+        'databaseURL': 'https://focuslock-61fc0-default-rtdb.asia-southeast1.firebasedatabase.app/'
+    })
 
 @app.route("/")
 def home():
