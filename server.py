@@ -5,7 +5,12 @@ from firebase_admin import credentials, db
 
 app = Flask(__name__)
 
-cred = credentials.Certificate("serviceAccountKey.json")
+import json
+import os
+
+firebase_key = json.loads(os.environ["FIREBASE_SERVICE_ACCOUNT"])
+
+cred = credentials.Certificate(firebase_key)
 
 if not firebase_admin._apps:
     firebase_admin.initialize_app(cred, {
